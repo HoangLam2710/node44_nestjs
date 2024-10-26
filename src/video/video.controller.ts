@@ -29,16 +29,22 @@ export class VideoController {
     // return this.videoService.create(createVideoDto);
   }
 
-  @Get('/get-videos/:page/:size')
-  findAll(
-    @Param('page') page: string,
-    @Param('size') size: string,
+  @Get('/get-videos')
+  async findAll(
+    @Query('page') page: string,
+    @Query('size') size: string,
     @Query('keyword') keyword: string,
     @Headers('Authorization') auth: string,
     @Res() res: Response,
-  ) {
-    return res.status(HttpStatus.OK).json({ page, size, keyword, auth });
-    // return this.videoService.findAll();
+  ): Promise<any> {
+    // return res.status(HttpStatus.OK).json({ page, size, keyword, auth });
+    try {
+      return await this.videoService.findAll();
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        message: error.message,
+      });
+    }
   }
 
   @Get(':id')
