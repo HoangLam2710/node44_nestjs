@@ -10,30 +10,57 @@ import {
   Headers,
   Res,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { VideoService } from './video.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { Response } from 'express';
 import { VideoDto } from 'src/video/dto/video.dto';
+import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 // nest g resource video --no-spec
 
+@ApiTags('Video')
 @Controller('video')
 export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
-  // @Post()
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
   @Post('/create-video')
-  create(@Body() createVideoDto: CreateVideoDto, @Res() res: Response) {
-    return res.status(HttpStatus.CREATED).json(createVideoDto);
+  async create(
+    @Body() createVideoDto: CreateVideoDto,
+    @Res() res: Response,
+  ): Promise<Response<VideoDto>> {
     // return this.videoService.create(createVideoDto);
+    try {
+      const newVideo = await this.videoService.create(createVideoDto);
+      return res.status(HttpStatus.CREATED).json(newVideo);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        message: error.message,
+      });
+    }
   }
 
   @Get('/get-videos')
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'size', required: false, type: Number })
+  @ApiQuery({ name: 'keyword', required: false, type: String })
+  @ApiQuery({ name: 'Authorization', required: false })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Get all videos successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Internal server error',
+  })
   async findAll(
-    @Query('page') page: string,
-    @Query('size') size: string,
+    @Query('page') page: number,
+    @Query('size') size: number,
     @Query('keyword') keyword: string,
     @Headers('Authorization') auth: string,
     @Res() res: Response,
