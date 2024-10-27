@@ -15,6 +15,7 @@ import { VideoService } from './video.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { Response } from 'express';
+import { VideoDto } from 'src/video/dto/video.dto';
 
 // nest g resource video --no-spec
 
@@ -36,10 +37,18 @@ export class VideoController {
     @Query('keyword') keyword: string,
     @Headers('Authorization') auth: string,
     @Res() res: Response,
-  ): Promise<any> {
+  ): Promise<Response<VideoDto[]>> {
     // return res.status(HttpStatus.OK).json({ page, size, keyword, auth });
     try {
-      return await this.videoService.findAll();
+      const formatPage = page ? Number(page) : 1;
+      const formatSize = size ? Number(size) : 10;
+
+      const videos = await this.videoService.findAll(
+        formatPage,
+        formatSize,
+        keyword,
+      );
+      return res.status(HttpStatus.OK).json(videos);
     } catch (error) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         message: error.message,
