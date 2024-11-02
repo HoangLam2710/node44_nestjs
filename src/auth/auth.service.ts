@@ -1,15 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+// import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
 import { LoginDto } from 'src/auth/dto/login.dto';
+import { KeyService } from 'src/key/key.service';
 
 @Injectable()
 export class AuthService {
   prisma = new PrismaClient();
   constructor(
     private jwtService: JwtService,
-    private configService: ConfigService,
+    // private configService: ConfigService,
+    private keyService: KeyService,
   ) {}
 
   async login(body: LoginDto): Promise<String> {
@@ -33,7 +35,9 @@ export class AuthService {
         },
         {
           expiresIn: '30m',
-          secret: this.configService.get('SECRET_KEY'),
+          // secret: this.configService.get('SECRET_KEY'),
+          privateKey: this.keyService.getPrivateKey(),
+          algorithm: 'RS256',
         },
       );
 

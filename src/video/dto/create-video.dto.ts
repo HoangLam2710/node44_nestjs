@@ -28,3 +28,13 @@ export class CreateVideoDto {
   @ApiProperty({ enum: VideoType })
   type_id: number;
 }
+
+export class FileUploadDto {
+  @ApiProperty({ type: 'string', format: 'binary' })
+  image: any;
+}
+
+export class FileUploadMultipleDto {
+  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' } })
+  image: any[];
+}

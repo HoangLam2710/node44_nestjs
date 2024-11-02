@@ -11,21 +11,41 @@ import {
   Res,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
 import { VideoService } from './video.service';
-import { CreateVideoDto } from './dto/create-video.dto';
+import {
+  CreateVideoDto,
+  FileUploadDto,
+  FileUploadMultipleDto,
+} from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { Response } from 'express';
 import { VideoDto } from 'src/video/dto/video.dto';
-import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { getStorageOptions } from 'src/shared/upload.service';
+import { CloudUploadService } from 'src/shared/cloudUpload.service';
 
 // nest g resource video --no-spec
 
 @ApiTags('Video')
 @Controller('video')
 export class VideoController {
-  constructor(private readonly videoService: VideoService) {}
+  constructor(
+    private readonly videoService: VideoService,
+    private readonly cloudUploadService: CloudUploadService,
+  ) {}
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
@@ -83,18 +103,62 @@ export class VideoController {
     }
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.videoService.findOne(+id);
+  @Post('/upload-thumbnail')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: FileUploadDto, required: true })
+  @UseInterceptors(
+    FileInterceptor('image', { storage: getStorageOptions('videos') }),
+  )
+  uploadThumbnail(
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: Response,
+  ) {
+    return res.status(HttpStatus.OK).json(file);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateVideoDto: UpdateVideoDto) {
-    return this.videoService.update(+id, updateVideoDto);
+  @Post('/upload-cloudinary')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: FileUploadDto, required: true })
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadThumbnailCloudinary(
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: Response,
+  ) {
+    try {
+      const result = await this.cloudUploadService.uploadImage(file, 'videos');
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        message: 'Upload failed',
+      });
+    }
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.videoService.remove(+id);
+  @Post('/upload-multiple-thumbnail')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: FileUploadMultipleDto, required: true })
+  @UseInterceptors(
+    FilesInterceptor('image', 20, { storage: getStorageOptions('videos') }),
+  )
+  uploadMultipleThumbnail(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Res() res: Response,
+  ) {
+    return res.status(HttpStatus.OK).json(files);
   }
+
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.videoService.findOne(+id);
+  // }
+
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updateVideoDto: UpdateVideoDto) {
+  //   return this.videoService.update(+id, updateVideoDto);
+  // }
+
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.videoService.remove(+id);
+  // }
 }
